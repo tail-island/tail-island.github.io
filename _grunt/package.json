@@ -1,0 +1,9 @@
+{
+  "name": "tail-island.github.io",
+  "version": "0.0.1",
+  "main": "Gruntfile.js",
+  "devDependencies": {
+    "grunt": "*",
+    "grunt-bower-task": "*"
+  }
+}
