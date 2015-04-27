@@ -1,8 +1,8 @@
 ---
-layout: post
-title: "Clojureのcond->とcond->>は、とっても便利だと思うんですよ"
+layout:   post
+title:    "Clojureのcond->とcond->>は、とっても便利だと思うんですよ"
 category: Programming
-tags: [Clojure]
+tags:     [Clojure]
 ---
 
 突然で申し訳ないのですけど、私は、以下のコードが嫌いです。

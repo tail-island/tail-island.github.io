@@ -1,8 +1,8 @@
 ---
-layout: post
-title: "ifが式で関数がファースト・クラス・オブジェクトな幸せを噛みしめる"
+layout:   post
+title:    "ifが式で関数がファースト・クラス・オブジェクトな幸せを噛みしめる"
 category: Programming
-tags: [Clojure]
+tags:     [Clojure]
 ---
 
 条件が多段になる場合のコードって、書くのが難しいと思うんですよ。
