@@ -7,7 +7,7 @@ layout: default
     {% for post in paginator.posts %}
     <div>
       <p><small>{{ post.date | date: "%Y/%m/%d" }}</small></p>
-      <p class="lead"><a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></p>
+      <h1><a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></h1>
       {{ post.content }}
       <hr>
     </div>
