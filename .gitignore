@@ -1,3 +1,5 @@
 /_site
 /.sass-cache
 /_grunt/node_modules
+
+.DS_Store
