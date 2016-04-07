@@ -6,5 +6,5 @@ url:              https://tail-island.github.io
 github:           tail-island
 twitter_username: tail-island
 gems:             [jekyll-paginate]
-markdown:         redcarpet
+markdown:         kramdown
 paginate:         3
