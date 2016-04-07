@@ -91,7 +91,7 @@ function developingPower(language) {
 
 順を追ってやりましょう。普通の`reduce`は、以下のコードで実現できます。
 
-```javascripot
+```javascript
 function reduce(f, initialValue, xs) {
   var acc = initialValue;
   
@@ -193,6 +193,7 @@ function developingPower(language) {
     return canDevelop(developer, language);
   };
 
+  // canDevelopWithでfilterしてpowerでmapして、plusでreduceします。
   return reduce(comp(filter(canDevelopWith),
                      map(power)),
                 plus, 0,
