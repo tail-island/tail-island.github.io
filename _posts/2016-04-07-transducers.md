@@ -166,7 +166,7 @@ function developingPower(language) {
 
 はい、これでループが1回だけになりました。コードも分かりやすい。実は、上のコードの、Reduceの引数の関数を引数に取ってReduceの引数の関数と同じシグネチャーの関数を返す関数が、Transducerなんです。上のコードのようにすれば集合は生成されませんから、パフォーマンスが向上します。時間を計測したら、100万回の呼び出しが0.3秒程度で完了しました。この程度のオーバーヘッドなら、使える範囲が大きく増えるでしょう。うん、Transducersって便利じゃん。
 
-……でも、このコードには汎用性がありません。なので、汎用的な`filter`と`map`を作って今後に備えることにしましょう。
+……でも、このコードには汎用性がありません。なので、汎用的な`filter`と`map`を作りましょう。
 
 ```javascript
 function filter(f) {
@@ -187,9 +187,20 @@ function map(f) {
     };
   };
 }
+
+function developingPower(language) {
+  var canDevelopWith = function(developer) {
+    return canDevelop(developer, language);
+  };
+
+  return reduce(comp(filter(canDevelopWith),
+                     map(power)),
+                plus, 0,
+                developers);
+}
 ```
 
-実施した作業は簡単で、関数を返す関数から、関数を返す関数を返す関数に変えただけです。
+はい、完璧！　実施した作業は簡単で、関数を返す関数から、関数を返す関数を返す関数に変えただけです。
 
 Clojure1.7は、これまでに作成したような`filter`や`map`、`reduce`に加えて、大量のTransducers対応の集合操作関数を提供します（しかも、`reduce`以外の処理、集合を結果に返すような処理でも使えるようになっている）。だから、Clojureなら、余計なユーティリティー関数を書かなくても今回のお題を実現できます。
 
