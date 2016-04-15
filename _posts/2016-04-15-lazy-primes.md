@@ -1,11 +1,11 @@
 ---
 layout:   post
-title:    "C#で「エラトステネスの篩」で「2.6秒で百万個の素数」を計算できる「無限シーケンス」を作ってみた"
+title:    "C#で「エラトステネスの篩」で「2.6秒で百万個」の素数を計算できる「無限シーケンス」を作ってみた"
 category: Programming
 tags:     [C#]
 ---
 
-調べものをしていたらたまたま見つけた[The Genuine Sieve of Eratosthenes](https://www.cs.hmc.edu/~oneill/papers/Sieve-JFP.pdf)の、Epilogue（本論とは無関係）に載っていた素数を求めるコードがすげぇ格好良い！
+調べものをしていたらたまたま見つけた[The Genuine Sieve of Eratosthenes](https://www.cs.hmc.edu/~oneill/papers/Sieve-JFP.pdf)の、Epilogueに載っていた素数を求めるコードがすげぇ格好良い！
 
 ```haskell
 primes = 2:([3..] `minus` composites)
@@ -107,7 +107,7 @@ public class Primes : IEnumerable<int>
 
 ## 再チャレンジ
 
-気を取り直して[The Genuine Sieve of Eratosthenes](https://www.cs.hmc.edu/~oneill/papers/Sieve-JFP.pdf)のEpilogueより前の本論を読んでみたら、より実行効率が良いアルゴリズムについて論じていました（こちらが本論なわけですけど）。これを参考に、エラトステネスの篩っぽさを残してコードを書いたら、以下になりました。
+気を取り直して[The Genuine Sieve of Eratosthenes](https://www.cs.hmc.edu/~oneill/papers/Sieve-JFP.pdf)のEpilogueより前の本論を読んでみたら、より実行効率が良いアルゴリズムについて論じていました（こちらが本論なわけですけど）。これを参考に、エラトステネスの篩っぽさを残してコードを書いてみました。
 
 ```csharp
 using System;
@@ -175,4 +175,4 @@ public class Primes : IEnumerable<int>
 }
 ```
 
-動かしてみたら、2.6秒で1,000,000個の素数を計算できました（百万個目の素数は、15,485,863でした。PCのCPUはCore i5 3380Mです）。簡単な処理で素数が必要な場合に、使えるのではないでしょうか？　無限シーケンスなので、使い勝手は良いと思いますよ。
+動かしてみたら、2.6秒で1,000,000個の素数を計算できました（百万個目の素数は、15,485,863でした。PCのCPUはCore i5 3380Mです）。簡単な処理で素数が必要な場合に、使えるんじゃないかな？　無限シーケンスなので、使い勝手は良いと思いますよ。
