@@ -7,7 +7,7 @@ tags:     "Python"
 
 ゲームを作っていたら（←SIerで働いているとは思えない書き出し）、浮動小数点の誤差でひどい目にあいました……。同じ穴にハマる方がいらっしゃるかもしれないので、注意喚起を。
 
-そのゲームはキャラクターが重なってはならない仕様だったので、[移動する2つの球の衝突判定](http://marupeke296.com/COL_3D_No9_GetSphereColliTimeAndPos.html)が必要でした。移動する2つの球の衝突判定は2次方程式を解く形になっていたので、以下のような関数を作成しました。
+そのゲームはキャラクターが重なってはならない仕様だったので、[移動する2つの球の衝突判定](http://marupeke296.com/COL_3D_No9_GetSphereColliTimeAndPos.html)を使いました。移動する2つの球の衝突判定は2次方程式を解く形になっているので、以下のような関数になります。
 
 ```python
 def solve_quadratic_equation(a, b, c):
