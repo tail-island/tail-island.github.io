@@ -1,6 +1,6 @@
 ---
 layout:   "post"
-title:    "Androidの辛すぎる開発を、Kotlinとコルーチンで楽にする"
+title:    "辛すぎるAndroidのApp開発を、Kotlinとコルーチンで楽にする"
 category: "programming"
 tags:     ["Kotlin", "Andtroid", "コルーチン"]
 ---
