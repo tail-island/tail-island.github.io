@@ -155,7 +155,9 @@ suspend fun requestPermission(activity: Activity, permission: String, rationale:
                 launch(UI) {  // Fragmentの追加が終わった後に実行させたい（launchしないとエラーになっちゃう）ので、launchします。
                     fragment.cont = cont
 
-                    FragmentCompat.requestPermissions(fragment, arrayOf(permission), 0)  // パーミッションをリクエストします。onRequestPermissionsResultでresumeされるまで、コルーチンは中断されます。
+                    FragmentCompat.requestPermissions(fragment, arrayOf(permission), 0)  // パーミッションをリクエストします。
+
+                    // onRequestPermissionsResultでresumeされるまで、コルーチンは中断されます。
                 }
             }
 
