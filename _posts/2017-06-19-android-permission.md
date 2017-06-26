@@ -142,7 +142,7 @@ suspend fun requestPermission(activity: Activity, permission: String, rationale:
         lateinit var cont: Continuation<Unit?>
 
         override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-            // 処理を閉じ込めているので、requestCodeのチェックは不要だと判断しました。
+            // 処理を閉じ込めているので、requestCodeのチェックはたぶん不要だと思う。
             cont.resume(Unit.takeIf { grantResults.all { it == PackageManager.PERMISSION_GRANTED } })
         }
     }
