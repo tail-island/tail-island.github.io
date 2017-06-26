@@ -122,58 +122,45 @@ import kotlinx.coroutines.experimental.launch
 import kotlin.coroutines.experimental.Continuation
 import kotlin.coroutines.experimental.suspendCoroutine
 
-suspend fun requestPermission(activity: Activity, permission: String, rationale: String): Boolean {
-    // onRequestPermissionsResultが必要なので、Fragmentを継承したメソッド・オブジェクトにします。
-    class PermissionRequester() : Fragment() {
-        // コルーチンへの参照。
-        private lateinit var cont: Continuation<Boolean>
+suspend fun requestPermission(activity: Activity, permission: String, rationale: String): Unit? {  // エルビス演算子を使いたいので、戻り値はBooleanじゃなくてUnit?で。
+    if (ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED) {
+        return Unit
+    }
+
+    if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)) {
+        suspendCoroutine<Unit?> { cont ->  // suspendCoroutineでコルーチンの実行を中断して……
+            AlertDialog.Builder(activity)
+                    .setMessage(rationale)
+                    .setOnCancelListener { cont.resume(null) }  // ここか……
+                    .setPositiveButton(android.R.string.ok, { _, _ -> cont.resume(Unit) })  // ここで、再開します。
+                    .show()
+        } ?: return null
+    }
+
+    // onRequestPermissionsResultが必要なので、Fragmentを継承したクラスを用意します。
+    class RequestPermissionFragment : Fragment() {
+        lateinit var cont: Continuation<Unit?>
 
         override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
             // 処理を閉じ込めているので、requestCodeのチェックは不要だと判断しました。
-            requestResult(grantResults)  // launchやasyncで囲まないとコルーチンを使えませんから、launchで囲んだ別のメソッドに移譲します。
-        }
-
-        internal fun request(cont: Continuation<Boolean>) = launch(UI) {  // Kotlinのコルーチンはlaunch(UI)で囲むとか必要で、ちょっと面倒だけど我慢。
-            this@PermissionRequester.cont = cont
-
-            if (ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED) {
-                cont.resume(true)  // コルーチンを継続。
-
-                return@launch
-            }
-
-            if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)) {
-                AlertDialog.Builder(activity)
-                        .setMessage(rationale)
-                        .setPositiveButton(android.R.string.ok, { dialog, which ->
-                            FragmentCompat.requestPermissions(this@PermissionRequester, arrayOf(permission), 0)
-                        })
-                        .show()
-
-                return@launch
-            }
-
-            FragmentCompat.requestPermissions(this@PermissionRequester, arrayOf(permission), 0)
-        }
-
-        private fun requestResult(grantResults: IntArray) = launch(UI) {
-            cont.resume(grantResults.all { it == PackageManager.PERMISSION_GRANTED })  // コルーチンを継続。
+            cont.resume(Unit.takeIf { grantResults.all { it == PackageManager.PERMISSION_GRANTED } })
         }
     }
 
-    return PermissionRequester().run {  // Kotlinのスコープ関数はとても便利。
+    return RequestPermissionFragment().let { fragment ->  // Kotlinのスコープ関数は、スコープを小さくできるのでとても便利。
         try {
-            // Fragmentの登録。
-            activity.fragmentManager.beginTransaction().add(0, this).commit()
+            activity.fragmentManager.beginTransaction().add(0, fragment).commit()  // Fragmentを追加します。
 
-            // コルーチンを中断して、リクエスト処理を実行します。
-            suspendCoroutine<Boolean> { cont ->
-                request(cont)
+            suspendCoroutine<Unit?> { cont ->
+                launch(UI) {  // Fragmentの追加が終わった後に実行させたい（launchしないとエラーになっちゃう）ので、launchします。
+                    fragment.cont = cont
+
+                    FragmentCompat.requestPermissions(fragment, arrayOf(permission), 0)  // パーミッションをリクエストします。onRequestPermissionsResultでresumeされるまで、コルーチンは中断されます。
+                }
             }
 
         } finally {
-            // Fragmentを削除。
-            activity.fragmentManager.beginTransaction().remove(this).commit()
+            activity.fragmentManager.beginTransaction().remove(fragment).commit()  // Fragmentを削除します。
         }
     }
 }
