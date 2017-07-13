@@ -5,6 +5,7 @@ email:            rojima1@gmail.com
 url:              https://tail-island.github.io
 github:           tail-island
 twitter_username: tail-island
-plugins:          [jekyll-paginate]
+gems:             [jekyll-paginate]
+plugins_dir:      [jekyll-paginate]
 markdown:         kramdown
 paginate:         3
