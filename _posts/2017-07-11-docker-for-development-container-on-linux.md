@@ -115,7 +115,7 @@ Dockerのユーザーは名前を偽装しているだけで、コンテナの�
 
 KVMをセットアップするのは、Dockerの外側、ホストOSの側です。Dockerのことは忘れて、まずは普通にKVMをセットアップしました。
 
-Dockerfileの中では、KVMを使えるようにするために、ユーザーをkvmグループに追加しておきます。その上で今回は、AndroidのSDK Toolsをダウンロードして、`emulator -accel-check`で本当にKVMを使えるか確認することにしました。
+Dockerfileの中では、KVMを使えるようにするために、ユーザーをkvmグループに追加しておきます（Dockerの外側ではkvmグループでなくてもACLで触れるけど、コンテナの内側ではACLが使えないみたい）。その上で今回は、AndroidのSDK Toolsをダウンロードして、`emulator -accel-check`で本当にKVMを使えるか確認することにしました。
 
 ```
 FROM try-gui
