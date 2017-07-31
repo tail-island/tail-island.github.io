@@ -186,7 +186,7 @@ WORKDIR /home/developer
 
 本当は、Dockerfileに`LABEL com.nvidia.volumes.needed="nvidia_driver"`と書いてNVIDIAのドライバが必要だということを知らせるようにすべき（ラベルが設定されていない場合、nvidia-dockerはドライバを読み込んでくれません）で、`PATH`や`LD_LIBRARY_PATH`のような環境変数にNVIDIAのドライバを含めてあげるべきなのですけど、今回はやりません。ドライバの読み込みもデバイスのマウントも環境変数の設定も、Docker Composeで実施するためです。
 
-さて、nvidia-dockerがインストールされていれば、`docker volume ls`すると以下のように表示されるはずです（381.22の部分はみなさまがセットアップしたドライバのバージョンになります）。
+さて、nvidia-dockerがインストール済で、一度実行した後なら、`docker volume ls`すると以下のように表示されるはずです（381.22の部分はみなさまがセットアップしたドライバのバージョンになります）。
 
 ```bash
 $ docker volume ls
