@@ -13,8 +13,8 @@ tags:     ["Keras, 深層学習, 関数型プログラミング"]
 
 実装
 
-* [Wide ResNetの実装](https://github.com/tail-island/try-wide-residual-net)
-* [SqueezeNetの実装](https://github.com/tail-island/try-squeeze-net)
+* [Wide ResNet](https://github.com/tail-island/try-wide-residual-net)
+* [SqueezeNet](https://github.com/tail-island/try-squeeze-net)
 
 参考
 
