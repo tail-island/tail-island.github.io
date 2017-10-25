@@ -186,7 +186,7 @@ def computational_graph(class_size):
 
     k = 10  # 論文によれば、CIFAR-10に最適な値は10。
     n =  4  # 論文によれば、CIFAR-10に最適な値は4。
-            # WRN-28なのに4になっているのは、28はdepthで、depthはconvの数で、1（最初のconv）+ 3 + n * 3 * 2 + 3（ショートカットのconv）だから。
+            # WRN-28なのに4になっているのは、28はdepthで、depthはconvの数で、1（最初のconv）+ 3 * n * 2 + 3（ショートカットのconv？）だからみたい。
 
     return rcompose(conv(16, 3),
                     residual_block(16 * k, 1, n),
