@@ -212,6 +212,9 @@ SqueezeNetは、こんな感じ。
 def computational_graph(class_size):
     # Utility functions.
 
+    def ljuxt(*fs):
+        return rcompose(juxt(*fs), list)
+
     def batch_normalization():
         return BatchNormalization()
 
@@ -219,7 +222,7 @@ def computational_graph(class_size):
         return Activation('relu')
 
     def conv(filters, kernel_size):
-        return Conv2D(filters, kernel_size, padding='same', kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))
+        return Conv2D(filters, kernel_size, padding='same', kernel_initializer='he_normal', kernel_regularizer=l2(0.0001))
 
     def concatenate():
         return Concatenate()
@@ -268,9 +271,9 @@ def computational_graph(class_size):
                     fire_module(64, 512),
                     max_pooling(),
                     fire_module_with_shortcut(64, 512),
-                    dropout(),
                     batch_normalization(),
                     relu(),
+                    dropout(),
                     conv(class_size, 1),
                     global_average_pooling(),
                     softmax())
