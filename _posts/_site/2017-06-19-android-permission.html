@@ -1,0 +1,179 @@
+<p>今年48歳になる年男な私ですが、2週間程前から、生まれて始めてのAndroidのApp開発をやっています。</p>
+
+<p>で、その感想。Androidって、APIがダサすぎませんか？　ダサいAPIを使うと生産性が落ちてしまいますから、特にダサくて涙が出ちゃった実行時のパーミッション・リクエストを、Kotlinとコルーチンで素敵にラップしてみました。Kotlinとコルーチン、かなり良いですよ。</p>
+
+<p>なお、本稿は、<a href="http://qiita.com/k-kagurazaka@github/items/b0d4b2042a5b1ebcbf79">Android Mのパーミッション制御をKotlinのasync/awaitで簡単にした</a>を参考にしています。この人のコルーチンの解説、すげー分かりやすいです。</p>
+
+<h2 id="android">Androidにおける、実行時のパーミッション・リクエスト</h2>
+
+<p>まずは、その実行時のパーミッション・リクエストがどれだけ面倒なのかを、<a href="https://developer.android.com/training/permissions/requesting.html">Androidの公式トレーニング文書</a>を参考に作成したコードで確認してみます。いきなり長いコードでごめんなさい。言語はKotlinです。</p>
+
+<p>```kotlin
+import …</p>
+
+<p>class MyActivity: AppCompatActivity() {
+    …</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>// カメラを使いたいなら……
+fun usingCamera() {
+    // パーミッションをすでに持っているか確認します。
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+        // パーミッションを持っているなら、実際にカメラを使う処理のuseCameraを呼び出します。
+        useCamera()
+        return
+    }
+
+    // 過去にパーミッションのリクエストを蹴られていて、「今後表示しない」が選択されていない場合は……
+    if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.CAMERA)) {
+        // パーミッションが必要な理由を訴えた上で、パーミッションをリクエストします。
+        AlertDialog.Builder(this)
+                .setMessage("インスタで意識高い系をやるにはカメラが必要なの")
+                .setPositiveButton(android.R.string.ok, { dialog, which -&gt;
+                    // [OK]ボタンがタップされたら、パーミッションをリクエストします。
+                    // 1234はonRequestPermissionsResultでリクエストを判別するための数値。なんでもいいみたい。
+                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 1234)
+                })
+                .show()
+                return
+    }
+
+    // パーミッションをリクエストします。
+    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 1234)
+}
+
+// パーミッションをリクエストした結果は、onRequestPermissionResultで受け取らなければなりません……。
+override fun onRequestPermissionsResult(requestCode: Int, permissions: Array&lt;String&gt;, grantResults: IntArray) {
+    // 自分のコード以外がrequestPermissionsしているかもしれないので、requestCodeをチェックします。
+    if (requestCode != 1234) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        return
+    }
+
+    // リクエスト結果をチェック。
+    if (grantResults.any { it != PackageManager.PERMISSION_GRANTED }) {
+        // リクエストを蹴られた場合はどうしましょ？　今回は、単純にActivityを終了させます。
+        finish()
+        return
+    }
+
+    // 実際の処理をここに書くわけには行かない（だって、ここに来るかはcheckSelfPermission次第だから）ので、useCameraに移譲します。
+    useCamera()
+}
+
+// やっとここで実際の処理。これより前はAndroidがやれっていうから書かなければならないだけの処理……
+fun useCamera() {
+    // カメラを使って実際にやりたい処理……。
+} } ```
+</code></pre>
+</div>
+
+<p>……分かりづれーよ、Android。<code class="highlighter-rouge">requestPermissions()</code>から<code class="highlighter-rouge">onRequestPermissionsResult()</code>に処理が流れるなんて、知識がなければ絶対に分かんねーじゃん。</p>
+
+<h2 id="section">あるべき形を考える</h2>
+
+<p>パーミッションを貰えたかどうかだけが重要なわけですから、以下のようなコードが、あるべき姿でしょう。</p>
+
+<p>```kotlin
+fun useCamera() {
+  if (!requestPermission(Manifest.permission.CAMERA, “インスタで意識高い系をやるにはカメラが必要なの”)) {
+    finish()
+    return
+  }</p>
+
+<p>// カメラを使って実際にやりたい処理。
+}
+```</p>
+
+<p>面倒な処理は<code class="highlighter-rouge">requestPermission()</code>の中に閉じ込めてライブラリ化しちゃうわけ。で、このあるべき形、Kotlinのコルーチンを使うと、ほぼ可能なんですよ。</p>
+
+<h2 id="section-1">ライブラリ化の課題</h2>
+
+<p>あるべき形にするのを阻んでいるのは、成功か失敗かが判明する場所が<code class="highlighter-rouge">usingCamera()</code>と<code class="highlighter-rouge">onRequestPermissionResult()</code>に分散していることです。で、従来の方式ではこんな場合にはコールバックを渡して、コールバックの中に<code class="highlighter-rouge">useCamera()</code>相当の処理を書くことになっていました。でもこの方式、いわゆるコールバック地獄になっちゃうんですよね。いくつものコールバックに処理が分断されてしまうので、処理の流れを追えなくなって生産性が落ちちゃう。</p>
+
+<p>だから、今時のプログラミング言語ではコルーチンと呼ばれる処理を途中で止めたり再開できる機能を持っていて、コールバックの代わりに処理の再開を使用するようになっています。コルーチンを使えば、先程のあるべき姿のような上から下に流れる（ように見える）コードで、複雑な処理フローを実現することができるんですよ。</p>
+
+<p>といっても、コルーチンというのは別に新しいものではなくて、実はC#やJavaScript（ECMAScript 2015）の<code class="highlighter-rouge">yield</code>でお馴染みのアレです。Lispでは何十年も前から当たり前に使われていますし、2012年の.NET Framework 4.5でC#に組み込まれた<code class="highlighter-rouge">async/await</code>なんてのもコルーチンの応用ですな。Kotlinは、2017年3月のバージョン1.1でコルーチンに対応したらしい。</p>
+
+<p>さて、先程のパーミッションのリクエスト処理を思い返してみると、<code class="highlighter-rouge">useCamera()</code>と<code class="highlighter-rouge">finish()</code>の所で、ユーザー・コードに処理を引き継げればよいわけ。リターンする直前で止めておいたコルーチンに、成功か失敗かを渡して継続させればOKです。</p>
+
+<h2 id="section-2">ライブラリ化</h2>
+
+<p>というわけで、ライブラリ化しました。以下がそのコード。</p>
+
+<p>```kotlin
+package …</p>
+
+<p>import android.app.Activity
+import android.app.AlertDialog
+import android.app.Fragment
+import android.content.pm.PackageManager
+import android.support.v13.app.FragmentCompat
+import android.support.v4.app.ActivityCompat
+import android.support.v4.content.ContextCompat
+import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.launch
+import kotlin.coroutines.experimental.Continuation
+import kotlin.coroutines.experimental.suspendCoroutine</p>
+
+<p>suspend fun requestPermission(activity: Activity, permission: String, rationale: String): Unit? {  // エルビス演算子を使いたいので、戻り値はBooleanじゃなくてUnit?で。
+    if (ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED) {
+        return Unit
+    }</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)) {
+    suspendCoroutine&lt;Unit?&gt; { cont -&gt;  // suspendCoroutineでコルーチンの実行を中断して……
+        AlertDialog.Builder(activity)
+                .setMessage(rationale)
+                .setOnCancelListener { cont.resume(null) }  // ここか……
+                .setPositiveButton(android.R.string.ok, { _, _ -&gt; cont.resume(Unit) })  // ここで、再開します。
+                .show()
+    } ?: return null
+}
+
+class RequestPermissionFragment : Fragment() {    // onRequestPermissionsResultが必要なので、Fragmentを継承したクラスを用意します。
+    lateinit var cont: Continuation&lt;Unit?&gt;
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array&lt;String&gt;, grantResults: IntArray) {
+        cont.resume(Unit.takeIf { grantResults.all { it == PackageManager.PERMISSION_GRANTED } })
+
+        // 処理を閉じ込めているので、requestCodeのチェックはたぶん不要じゃないかなぁと。
+    }
+}
+
+return RequestPermissionFragment().let { fragment -&gt;  // Kotlinのスコープ関数は、スコープを小さくできるのでとても便利。
+    try {
+        activity.fragmentManager.beginTransaction().add(0, fragment).commit()  // Fragmentを追加します。
+
+        suspendCoroutine&lt;Unit?&gt; { cont -&gt;
+            launch(UI) {  // Fragmentの追加が終わった後に実行させたい（launchしないとエラーになっちゃう）ので、launchします。
+                fragment.cont = cont
+
+                FragmentCompat.requestPermissions(fragment, arrayOf(permission), 0)  // パーミッションをリクエストします。
+
+                // onRequestPermissionsResultでresumeされるまで、コルーチンは中断されます。
+            }
+        }
+
+    } finally {
+        activity.fragmentManager.beginTransaction().remove(fragment).commit()  // Fragmentを削除します。
+    }
+} } ```
+</code></pre>
+</div>
+
+<p>呼び出し側のコードは、以下の通り。</p>
+
+<p>```kotlin
+fun useCamera() = launch(UI) {
+    // パーミッションをリクエスト。
+    if (!requestPermission(Manifest.permission.CAMERA, “インスタで意識高い系をやるにはカメラが必要なの”)) {
+        // パーミッションを貰えなかった場合の処理。
+        finish()
+        return
+    }</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>// カメラを使って実際にやりたい処理。 } ```
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">launch(UI)</code>の部分がちょっと見苦しいけど、それ以外は理想的なコードでしょ？　コルーチンは実に便利ですな。</p>

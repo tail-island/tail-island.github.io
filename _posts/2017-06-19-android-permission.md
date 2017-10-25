@@ -15,7 +15,7 @@ tags:     ["Kotlin", "Andtroid", "コルーチン"]
 
 まずは、その実行時のパーミッション・リクエストがどれだけ面倒なのかを、[Androidの公式トレーニング文書](https://developer.android.com/training/permissions/requesting.html)を参考に作成したコードで確認してみます。いきなり長いコードでごめんなさい。言語はKotlinです。
 
-```kotlin
+~~~ kotlin
 import ...
 
 class MyActivity: AppCompatActivity() {
@@ -72,7 +72,7 @@ class MyActivity: AppCompatActivity() {
         // カメラを使って実際にやりたい処理……。
     }
 }
-```
+~~~
 
 ……分かりづれーよ、Android。`requestPermissions()`から`onRequestPermissionsResult()`に処理が流れるなんて、知識がなければ絶対に分かんねーじゃん。
 
@@ -80,7 +80,7 @@ class MyActivity: AppCompatActivity() {
 
 パーミッションを貰えたかどうかだけが重要なわけですから、以下のようなコードが、あるべき姿でしょう。
 
-```kotlin
+~~~ kotlin
 fun useCamera() {
   if (!requestPermission(Manifest.permission.CAMERA, "インスタで意識高い系をやるにはカメラが必要なの")) {
     finish()
@@ -89,7 +89,7 @@ fun useCamera() {
 
   // カメラを使って実際にやりたい処理。
 }
-```
+~~~
 
 面倒な処理は`requestPermission()`の中に閉じ込めてライブラリ化しちゃうわけ。で、このあるべき形、Kotlinのコルーチンを使うと、ほぼ可能なんですよ。
 
@@ -107,7 +107,7 @@ fun useCamera() {
 
 というわけで、ライブラリ化しました。以下がそのコード。
 
-```kotlin
+~~~ kotlin
 package ...
 
 import android.app.Activity
@@ -166,11 +166,11 @@ suspend fun requestPermission(activity: Activity, permission: String, rationale:
         }
     }
 }
-```
+~~~
 
 呼び出し側のコードは、以下の通り。
 
-```kotlin
+~~~ kotlin
 fun useCamera() = launch(UI) {
     // パーミッションをリクエスト。
     if (!requestPermission(Manifest.permission.CAMERA, "インスタで意識高い系をやるにはカメラが必要なの")) {
@@ -181,6 +181,6 @@ fun useCamera() = launch(UI) {
 
     // カメラを使って実際にやりたい処理。
 }
-```
+~~~
 
 `launch(UI)`の部分がちょっと見苦しいけど、それ以外は理想的なコードでしょ？　コルーチンは実に便利ですな。

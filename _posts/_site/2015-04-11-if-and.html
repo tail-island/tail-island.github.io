@@ -1,0 +1,40 @@
+<p>Wikipeaidの<a href="http://ja.wikipedia.org/wiki/If%E6%96%87">if文のページ</a>の下の方の「論理積・論理和による擬似的なif文」のところに、andやorでif文と同様なことができると書いてあります。</p>
+
+<p>たしかに</p>
+
+<p><code class="highlighter-rouge">clojure
+(if (odd? x)
+  (println "TVの音量は偶数で！"))
+</code></p>
+
+<p>は、</p>
+
+<p><code class="highlighter-rouge">clojure
+(and (odd? x) (println "TVの音量は偶数で！"))
+</code></p>
+
+<p>と同じ動作をしますもんね（Clojureの<code class="highlighter-rouge">and</code>は、内部で<code class="highlighter-rouge">if</code>を使っているマクロですし）。</p>
+
+<p>ただし、この2つのコード、戻り値は異なっているんですよ。</p>
+
+<p><code class="highlighter-rouge">if</code>で条件が偽で<code class="highlighter-rouge">else</code>が省略されていた時は<code class="highlighter-rouge">nil</code>で、<code class="highlighter-rouge">and</code>で最初の引数が偽だった場合は最初の引数（上の例の場合は<code class="highlighter-rouge">false</code>）が返ります。そしてClojureでは、<code class="highlighter-rouge">nil</code>と<code class="highlighter-rouge">false</code>を異なるものとして扱う場合があります。例として、私が大好きな<code class="highlighter-rouge">keep</code>関数に登場していただきましょう。</p>
+
+<p>```clojure
+(keep #(if (= (:programming-language %) “Clojure”)
+         (:name %))
+      systems)</p>
+
+<p>;; この程度だとfilterとmapで書いた方がキレイなのですけど、例なのでご容赦ください。
+```</p>
+
+<p>このコードでは、<code class="highlighter-rouge">if</code>の代わりに<code class="highlighter-rouge">and</code>を使うことはできません。<code class="highlighter-rouge">and</code>を使うと、Clojureなシステムの場合は名前を、そうでない場合は<code class="highlighter-rouge">false</code>を返すという無意味な処理になってしまいますもんね。</p>
+
+<p>あと、<code class="highlighter-rouge">cons</code>や<code class="highlighter-rouge">concat</code>、<code class="highlighter-rouge">mapcat</code>のようなシーケンスを作る関数では、<code class="highlighter-rouge">nil</code>を要素数がゼロのシーケンスとしてみなしてくれます。もしこれらの関数に<code class="highlighter-rouge">false</code>を渡したら、実行時エラーになってしまいます。</p>
+
+<p>つまり、<code class="highlighter-rouge">nil</code>は<code class="highlighter-rouge">false</code>よりも使い勝手がいいんですよね。偽を表現する場合にも、存在していないことを表現する場合にも、空の集合を表現する場合にも使える。</p>
+
+<p>だから、結果がどのような使われ方をするか分からない関数の戻り値に関係するような場合、私は<code class="highlighter-rouge">if</code>を使います。そうでない場合、結果を同じ関数内で消費するような場合は、一行で書いても違和感が少ない<code class="highlighter-rouge">and</code>を使うようにしています。これが私のコードを書くときのルールなわけですな。</p>
+
+<p>＃あと、どうしても<code class="highlighter-rouge">else</code>が必要な場合は、<code class="highlighter-rouge">if</code>を使うしかないので<code class="highlighter-rouge">if</code>を使っています。</p>
+
+<p>そうそう。最初に挙げたTVの音量の場合はどちらにするかといえば、<code class="highlighter-rouge">println</code>という処理をするかどうかの判断なので、処理のための分岐であることが明確になるように、私なら<code class="highlighter-rouge">when</code>を使います。</p>

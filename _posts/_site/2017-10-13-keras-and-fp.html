@@ -1,0 +1,210 @@
+<p>深層学習ってのは、つまるところ、バックプロバゲーション（逆誤差伝播法）が可能な計算グラフ（計算式）を作って、計算グラフ中のパラメーターを大量データでキアイで学習させてるだけ。しかも、色々と定石が定まってきている（たとえば「畳込みをするならバッチ・ノーマライゼーション→ReLU→畳み込みの順でやると精度が上がるよ」とか「分類の場合、全結合層を最後に入れるより平均プーリングした方がパラメーター数が少なくなるし畳み込みが何を表現しているのかが明確になっていいよ」とか）なので、定石を組み合わせるだけでいろいろできちゃう。あと、ライブラリが計算式をカプセル化してくれるので、計算グラフといっても実際は計算式いらず（ライブラリがバックプロバゲーションが可能な計算グラフを作ってくれるので、バックプロバゲーションのことも全く考えなくてオッケー）。</p>
+
+<p>そして、論文を見れば最新の計算グラフが数式で細かく書いてあるし、大抵はコードも公開されています。なので論文の数式と公開されたコードを読めばすぐに最新の深層学習を適用できちゃうはず……なのですけど、私は数式大嫌いなので読みたくないし、公開されているコードはなんだか複雑で読みづらい。まぁ、彼らは学者さんでプログラマーじゃないのだから、コードを書くのが下手なのはしょうがない。</p>
+
+<p>というわけで、簡単だと評判の深層学習ライブラリのKerasと関数型プログラミングを活用して、今時の画像認識の計算グラフをできるだけ簡潔に書いてみました。実装したのは、パラメーター数が少ないのに実用的な精度が出て便利なSqueezeNetと、その高い精度で一世を風靡しているResNetです。</p>
+
+<p><a href="https://github.com/tail-island/try-squeeze-net">SqueezeNet</a> - <a href="https://arxiv.org/pdf/1602.07360.pdf">SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and &lt;0.5MB model size</a></p>
+
+<p><a href="https://github.com/tail-island/try-residual-net">ResNet</a> - <a href="https://arxiv.org/pdf/1603.05027.pdf">Identity Mappings in Deep Residual Networks</a></p>
+
+<p>※実装にあたっては、<a href="https://github.com/nutszebra/chainer_image_recognition">Implementations of image recognition model</a>を参考にしています。Chainer使いの方は、こちらのコードをコピー＆ペーストでどうぞ。</p>
+
+<h1 id="section">計算グラフの定義は、関数を返す関数を定義するのと同じ</h1>
+
+<p>さて、計算グラフの定義と聞くと難しそうなのですけど、実際は、ただの関数の組み合わせです。<code class="highlighter-rouge">add()</code>と<code class="highlighter-rouge">subtract()</code>という関数を使用して<code class="highlighter-rouge">x + 1 - 2</code>を表現すると、<code class="highlighter-rouge">subtract(add(x, 1), 2)</code>になるというだけ。で、深層学習はこの<code class="highlighter-rouge">1</code>や<code class="highlighter-rouge">2</code>の部分にどんな値を設定すればよいかを学習するものなので計算グラフの中での記述は不要、だから<code class="highlighter-rouge">subtract(add(x))</code>みたいな書き方になります。たとえば、バッチ・ノーマライゼーションしたあとにReLUして畳み込みをするという定石をKerasで書くと、以下のようになります。</p>
+
+<p><code class="highlighter-rouge">python
+y = Conv2D(...)(Activation('relu')(BatchNormalization()(x)))
+</code></p>
+
+<p>なんか見慣れない形になっているのは、Kerasでは<code class="highlighter-rouge">Conv2D(...)</code>と書くと畳み込みをする計算グラフが返されて、それに引数を渡す形になっているため。関数（実際には関数として呼び出せるオブジェクト）を返す関数（実際にはコンストラクタ）ですな。一般的な言語で言うところの、ラムダ式を返す関数のような感じ。</p>
+
+<p>あれ、ということは、関数合成できちゃう？　<code class="highlighter-rouge">a(b(c(x)))</code>を<code class="highlighter-rouge">f = compose(a, b, c); f(x)</code>と書くアレです。Pythonで関数型プログラミングするときに私が使っているライブラリのfuncyには<code class="highlighter-rouge">compose</code>（数式みたいに右から左に合成）と<code class="highlighter-rouge">rcompose</code>（<code class="highlighter-rouge">compose</code>の逆順で合成）がありますので、先ほどのコードを書き換えてみましょう。言葉での記述と順序が同じになるので分かりやすい<code class="highlighter-rouge">rcompose</code>を使用します。</p>
+
+<p><code class="highlighter-rouge">python
+y = rcompose(BatchNormalization(), Activation('relu'), Conv2D(...))(x)
+</code></p>
+
+<p>で、<code class="highlighter-rouge">x</code>を渡す（関数を実際に呼び出す）のは最後でいいと考えれば、バッチ・ノーマライゼーションしてReLUして畳み込みをする計算グラフを返す関数は、以下のように定義できます。</p>
+
+<p><code class="highlighter-rouge">python
+def bn_relu_conv(filters, kernel_size, strides=1):
+    return rcompose(BatchNormalization(), Activation('relu'), Conv2D(filters, kernel_size, strides=strides))
+</code></p>
+
+<p>言葉での定義を、ほぼそのまま書いただけ。実にわかりやすいですな。</p>
+
+<h1 id="juxt">分岐はjuxtで</h1>
+
+<p>まぁ、この程度のことはKerasの作者さんは当然ご存知なわけで、だからKerasでは<code class="highlighter-rouge">Sequential</code>という型が定義されています。<code class="highlighter-rouge">Sequential</code>を使うと、以下のような感じで計算グラフを定義できます。</p>
+
+<p><code class="highlighter-rouge">python
+model = Sequential([BatchNormalization(),
+                    Activation('relu'),
+                    Conv2D(...)])
+</code></p>
+
+<p>でもね、この書き方だと分岐と結合が表現できないんですよ。なので、Kerasでは関数型APIというのも提供しています。Kerasのガイドに従ってSqueezeNetのfire moduleを定義すると、以下のようになります（SqueezeNetの論文に定石を組み合わせていますから、論文とはちょっと違うけど）。</p>
+
+<p>＃ちなみに、fire moduleはこんな感じの計算グラフです。1x1で次元数を減らす畳み込みをして（squeeze）、1x1と3x3での畳み込みで次元数を増やして（expand）います。</p>
+
+<p><img src="/images/2017-10-13/fire-module.png" alt="fire module" /></p>
+
+<p>```python
+y  = BatchNormalization()(x)
+y  = Activation(‘relu’)(y)
+y  = Conv2D(16, 1)(y)</p>
+
+<p>y1 = BatchNormalization()(y)
+y1 = Activation(‘relu’)(y1)
+y1 = Conv2D(64, 1)(y1)</p>
+
+<p>y2 = BatchNormalization()(y)
+y2 = Activation(‘relu’)(y2)
+y2 = Conv2D(64, 3)(y2)</p>
+
+<p>y  = Concatenate()([y1, y2])
+```</p>
+
+<p>ダメだ、これはあまりに美しくない……。先ほど定義した<code class="highlighter-rouge">bn_relu_conv</code>を使って関数化しても、</p>
+
+<p>```python
+def fire_module(x, filters_squeeze, filters_expand):
+    y  = bn_relu_conv(filters_squeeze,     1)(x)
+    y1 = bn_relu_conv(filters_expand // 2, 1)(y)
+    y2 = bn_relu_conv(filters_expand // 2, 3)(y)
+    y  = Concatenate()([y1, y2])</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>return y ```
+</code></pre>
+</div>
+
+<p>関数の種類が2つ（<code class="highlighter-rouge">x</code>を引数に取らないで計算グラフを返す関数と、<code class="highlighter-rouge">x</code>を引数に取って計算結果を返す関数の2種類）になって、コードを読むときに脳のモードを切り替えなければならなくなって可読性が悪くなっちゃっうのでやっぱりダメ。</p>
+
+<p>ただ、関数型プログラマーであるfuncyの作者さんはこんな問題が発生することはもちろんご存知で、だから解決策を用意してくれています。<code class="highlighter-rouge">juxt</code>ですな。</p>
+
+<p>```python
+def inc(x):
+  return x + 1</p>
+
+<p>def dec(y):
+  return x - 1</p>
+
+<p>y = juxt(inc, dec)(10)  # [11, 9]が返ります。
+```</p>
+
+<p>ただ、funcyはPython3だとジェネレーターを積極的に活用するのにKerasはジェネレーターよりもリストが好きなので、残念なことに<code class="highlighter-rouge">juxt</code>そのままでは使えません。だから、リストを返す<code class="highlighter-rouge">ljuxt</code>を定義してあげましょう。そうすれば、<code class="highlighter-rouge">fire_module</code>は以下のように書けます。</p>
+
+<p>```python
+def ljuxt(<em>fs):
+    return rcompose(juxt(</em>fs), list)</p>
+
+<p>def fire_module(filters_squeeze, filters_expand):
+    return rcompose(bn_relu_conv(filters_squeeze, 1),
+                    ljuxt(bn_relu_conv(filters_expand // 2, 1),
+                          bn_relu_conv(filters_expand // 2, 3)),
+                    Concatenate())
+```</p>
+
+<p>これで関数の種類が1つに統一されて、可読性が上がって、うん、美しい！</p>
+
+<h1 id="squeezenet">SqueezeNet</h1>
+
+<p>今回の成果を活用してSqueezeNetのモデル定義部分を書くと、以下のコードになります。</p>
+
+<p>```python
+def create_model(x, y):
+    def conv_2d(filters, kernel_size, strides=1):
+        return Conv2D(filters, kernel_size, strides=strides, padding=’same’, kernel_initializer=’he_normal’)</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>def max_pooling_2d():
+    return MaxPooling2D(pool_size=3, strides=2, padding='same')
+
+def bn_relu_conv(filters, kernel_size, strides=1):
+    return rcompose(BatchNormalization(), Activation('relu'), conv_2d(filters, kernel_size, strides))
+
+def fire_module(filters_squeeze, filters_expand):
+    return rcompose(bn_relu_conv(filters_squeeze, 1),
+                    ljuxt(bn_relu_conv(filters_expand // 2, 1),
+                          bn_relu_conv(filters_expand // 2, 3)),
+                    Concatenate())
+
+def fire_module_with_shortcut(filters_squeeze, filters_expand):
+    return rcompose(ljuxt(fire_module(filters_squeeze, filters_expand),
+                          identity),
+                    Add())
+
+computational_graph = rcompose(bn_relu_conv(96, 3),
+                               max_pooling_2d(),
+                               fire_module(16, 128),
+                               fire_module_with_shortcut(16, 128),
+                               fire_module(32, 256),
+                               max_pooling_2d(),
+                               fire_module_with_shortcut(32, 256),
+                               fire_module(48, 384),
+                               fire_module_with_shortcut(48, 384),
+                               fire_module(64, 512),
+                               max_pooling_2d(),
+                               fire_module_with_shortcut(64, 512),
+                               bn_relu_conv(y.shape[1], 1),
+                               GlobalAveragePooling2D(), Activation('softmax'))
+
+return Model(*juxt(identity, computational_graph)(Input(shape=x.shape[1:]))) ```
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">identity</code>ってのは引数をそのまま返す関数で、これを使えば<code class="highlighter-rouge">f(x) + x</code>を<code class="highlighter-rouge">rcompose(juxt(f, identity), operator.add)</code>で表現できるわけですね。イマドキの深層学習では層を増やした場合にも誤差が伝播するようにショートカットを使う場合が多いので、<code class="highlighter-rouge">identity</code>はとても便利です（関数型プログラミングしていると、<code class="highlighter-rouge">identity</code>の出番はとても多いですしね）。</p>
+
+<p>＃<code class="highlighter-rouge">rcompose</code>と<code class="highlighter-rouge">computation_graph</code>、<code class="highlighter-rouge">ljuxt</code>を<code class="highlighter-rouge">parallel</code>と別名定義すれば、DSL（Domain Specific Language。ドメイン特化言語）になるかもしませんけど、私は関数型プログラマーなのでこのままの方が分かりやすいです。</p>
+
+<p>ちなみに、SqueezeNetはこんな感じの計算グラフです。</p>
+
+<p><img src="/images/2017-10-13/squeeze-net.png" alt="SqueezeNet" /></p>
+
+<h1 id="resnet">ResNet</h1>
+
+<p>ResNetだと、こんな感じ。</p>
+
+<p>```python
+def create_model(x, y):
+    def conv_2d(filters, kernel_size, strides=1):
+        return Conv2D(filters, kernel_size, strides=strides, padding=’same’, kernel_initializer=’he_normal’)</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>def bn_relu_conv(filters, kernel_size, strides=1):
+    return rcompose(BatchNormalization(), Activation('relu'), conv_2d(filters, kernel_size, strides))
+
+def residual_first_block(filters, strides):
+    return rcompose(ljuxt(rcompose(bn_relu_conv(filters // 4, 1, strides),
+                                   bn_relu_conv(filters // 4, 3),
+                                   bn_relu_conv(filters,      1)),
+                          rcompose(bn_relu_conv(filters,      1, strides))),
+                    Add())
+
+def residual_block(filters):
+    return rcompose(ljuxt(rcompose(bn_relu_conv(filters // 4, 1),
+                                   bn_relu_conv(filters // 4, 3),
+                                   bn_relu_conv(filters,      1)),
+                          identity),
+                    Add())
+
+computational_graph = rcompose(bn_relu_conv(16, 3),
+                               residual_first_block( 64, 1), rcompose(*repeatedly(partial(residual_block,  64), 18 - 1)),
+                               residual_first_block(128, 2), rcompose(*repeatedly(partial(residual_block, 128), 18 - 1)),
+                               residual_first_block(256, 2), rcompose(*repeatedly(partial(residual_block, 256), 18 - 1)),
+                               bn_relu_conv(y.shape[1], 1),
+                               GlobalAveragePooling2D(), Activation('softmax'))
+
+return Model(*juxt(identity, computational_graph)(Input(shape=x.shape[1:]))) ```
+</code></pre>
+</div>
+
+<p>うん、簡単ですな。どんな計算グラフなのかが、コードからすぐに読み取れます。</p>
+
+<p>ちなみに、ResNetはこんな感じの計算グラフです（上のコードはその進化形の実装なので、少し異なりますけど）。</p>
+
+<p><img src="/images/2017-10-13/res-net.png" alt="ResNet" /></p>
+
+<h1 id="section-1">というわけで</h1>
+
+<p>関数型プログラミング最高！</p>

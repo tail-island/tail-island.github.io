@@ -1,0 +1,31 @@
+<p>突然で申し訳ないのですけど、私は、以下のコードが嫌いです。</p>
+
+<p><code class="highlighter-rouge">clojure
+(defn tv-volume
+  "TVの音量は偶数で！"
+  [x]
+  (if (odd? x)
+    (inc x)
+    x))
+</code></p>
+
+<p>嫌いな理由は、以下の通り。</p>
+
+<ul>
+  <li><code class="highlighter-rouge">x</code>を4回も書かなければならない。タイプミスの危険性がある。</li>
+  <li><code class="highlighter-rouge">if</code>の<code class="highlighter-rouge">else</code>を書き忘れ、<code class="highlighter-rouge">ni</code>lが返って不正な動きをする危険性がある。</li>
+</ul>
+
+<p>で、そんな時はやっぱり、<code class="highlighter-rouge">cond-&gt;</code>や<code class="highlighter-rouge">cond-&gt;&gt;</code>なわけですよ。</p>
+
+<p><code class="highlighter-rouge">clojure
+(defn tv-volume
+  "TVの音量は偶数。特定の場合に特定の操作で、それ以外はそのままにしたいなら、cond-&gt;かcond-&gt;&gt;で！"
+  [x]
+  (cond-&gt; x
+    (odd? x) (inc)))
+</code></p>
+
+<p><code class="highlighter-rouge">cond-&gt;</code>は、条件が真になった場合は指定された処理を<code class="highlighter-rouge">-&gt;</code>を経由して呼び出します。上のコードの場合は、<code class="highlighter-rouge">(odd? x)</code>な場合は<code class="highlighter-rouge">(-&gt; x (inc))</code>になるわけで、だから結果として<code class="highlighter-rouge">(inc x)</code>が実行されるというわけ。<code class="highlighter-rouge">x</code>を書く数は3回に減ったし、<code class="highlighter-rouge">else</code>の書き忘れがないので意図しない<code class="highlighter-rouge">nil</code>が返る危険性もありません。</p>
+
+<p>というわけで、<code class="highlighter-rouge">cond-&gt;</code>と<code class="highlighter-rouge">cond-&gt;&gt;</code>はとっても便利だと思うんですよ。もし使ったことがないなら、使ってみませんか？</p>

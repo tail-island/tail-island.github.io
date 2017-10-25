@@ -128,13 +128,13 @@ b = np.matrix([0.21, 0.22, 0.23])              # バイアス。1行3列。値�
 # ネットワークの定義。
 
 layer_1_out = x * w + b                        # 1行3列の出力になる。活性化関数は未使用。
-```
+~~~
 
 あらまぁ、とっても簡単……。でも、TensorFlowだと、もう少し難しくなります。というのも、TensorFlowではどのような計算をするかの定義と、定義した計算の実行を分けて記述しなければならないんですよ。こんな面倒な方式になっているのは、学習をさせるにはどのような計算をしたのかという情報が必要になるため（Chainerというディープ・ラーニングのライブラリでは、コード上での定義と実行が一つになっていますけど、実行時に裏で計算グラフを作っています）。
 
 というわけで、TensorFlowの流儀に従うことにしましょう。まずはニューラル・ネットワークの定義えす。題材は、28ドット×28ドットの0～9の手書き数字を認識する、MNISTとします。
 
-```python
+~~~ python
 # ニューラル・ネットワークの構築はinferenceでやれとチュートリアルに書いてあった。
 def inference(l0):  # l0は、ニューラル・ネットワークへの入力となる行列。今回は、28ドット×28ドットの画像データを1行784列の行列にしたもの。
     # name_scope()しておくと、後述するTensorBoardでの表示がわかりやすくになります。なお、入力でも出力でもない層を、隠れ層と呼びます。
@@ -143,7 +143,7 @@ def inference(l0):  # l0は、ニューラル・ネットワークへの入力�
         # 引数が、行列の次元です。入力が784列なので、最初の値は784に決まります。次の値を100にして、隠れ層のニューロンの数を100にしました。
         # なお、戻り値のw1は計算式そのものなので、printしても値はわかりません（Chainerだと、printできてデバッグが楽らしい）。
         w1 = tf.Variable(tf.truncated_normal([784, 100]))
-        
+
         # Variable型の、バイアスの行列を作成します。constantは定数での初期化。
         # TensorFlowのチュートリアルでは0.1に初期化したのが多かったので、何も考えずに0.1で初期化しました。ただの初期値だしね。
         # shapeが行列の次元。ニューロンの数を100にしたので、100になります。
@@ -161,7 +161,7 @@ def inference(l0):  # l0は、ニューラル・ネットワークへの入力�
 
     # 計算結果（を表現する計算グラフ）を返します。
     return l2
-```
+~~~
 
 APIを調べるのは少し面倒でしたけど、コードそのものはかなり簡単でした。
 
@@ -171,7 +171,7 @@ APIを調べるのは少し面倒でしたけど、コードそのものはか�
 
 この損失関数にはやっぱりいくつかあって、クロス・エントロピーってのが有名みたいです。で、Webを見ていくとクロス・エントロピーの数式が載っているのですけど、まぁこれが全くワカラナイ。だから、TensorFlowのAPIに丸投げしました。
 
-```python
+~~~ python
 # 損失関数はloss()でやれと、チュートリアルに書いてあった。
 def loss(logits, labels):
     # 引数のlogitsはニューラル・ネットワークの出力、labelsは正解データ。
@@ -189,7 +189,7 @@ def loss(logits, labels):
 def with_scalar_summary(op):
     tf.scalar_summary(op.name, op)
     return op
-```
+~~~
 
 TensorFlowなら、数式いらずですな。
 
@@ -197,14 +197,14 @@ TensorFlowなら、数式いらずですな。
 
 さて、作成した損失関数を活用してバックプロバゲーションして学習するわけですけど、ゴール目指していい感じに最適化するアルゴリズムとして最急降下法ってのがあります（詳細は私以外の人に聞いてください……）。TensorFlowは、このアルゴリズムをtrain.GradientDescentOptimizerで提供しています。TensorFlowは他にもいろいろな最適化アルゴリズムがあって、train.AdamOptimizerってのが良いらしい（学習レートを自動で調整してくれる）。でも、今回は学習レートが学習に与える影響を調べたかったので、最も基本的なtrain.GradientDescentOptimizerを使用してみました。
 
-```python
+~~~ python
 # 最適化方法はtrainingで示せと、チュートリアルに書いてあった。
 def training(loss, learning_rate):
     # 引数のlossは、損失関数。learning_rateは学習レートと呼ばれるもの。
     # 学習レート変えるとうまく学習するようになるというか、調整して適切な値に設定しないと全然学習されなくて涙が出る。
     # minimizeは最小化するように頑張れという指示。
     return tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
-```
+~~~
 
 さて、ディープ・ラーニングというと必ず出てくるバックプロパゲーションですが、私は全く理解していません。というのも、TensorFlowが自動でやってくれるんですよね。だから、ここまでに作成したコードだけで、バックプロパゲーションでニューラル・ネットワークの学習が可能です。
 
@@ -212,12 +212,12 @@ def training(loss, learning_rate):
 
 でも、損失関数の値が0.23になった……とか言われても、それがどの程度凄いのかは全くわかりませんので、正解数などの指標を提供する関数も作っておきましょう。TensorFlowは、正解不正解を確認するためのAPIも用意してくれています。nn.in\_top\_kを使うと、今回のlogitsの出力である10個の数値のうち、値が大きい上位k個のインデックスのどれかがlabelと一致すればTrueになります。今回はkに1を入れて、正解かどうかを判断しました（「この写真に表示されているのは犬か猫か車のどれかだと思う」と出力するシステムの場合は、kを3にしてください）。
 
-```python
+~~~ python
 # 評価をする計算グラフはevaluationで作れと、チュートリアルに書いてあった。
 def evaluation(logits, labels):
     # TrueやFalseだと計算できないのでint32にキャストして、reduce_sumで合計します。Trueは1、Falseは0になります。
     return with_scalar_summary(tf.reduce_sum(tf.cast(tf.nn.in_top_k(logits, labels, 1), tf.int32), name='evaluation'))
-```
+~~~
 
 もう、いたれりつくせりですな。
 
@@ -231,7 +231,7 @@ def evaluation(logits, labels):
 
 学習部分の実装は、コード量は少し多いけれど簡単です。MNISTのデータをダウンロードして行列化する処理はTensorFlowのサンプルにあった（tensorflow.examples.tutorials.mnist.input_data）ので、それをそのまま使用します。入力と正解を関数グラフに渡すための入れ物はplaceholderで作成できます。あとは、計算グラフを実行する環境であるSessionを作成して、Sessionのrunメソッドを呼ぶだけ。学習した結果が見えないとさみしいので、TensorBoardと画面に出力する処理も少しだけ作りましょう。
 
-```python
+~~~ python
 # TensorFlowのサンプルを使用して、MNISTのデータを読み込みます。
 from tensorflow.examples.tutorials.mnist import input_data
 data_sets = input_data.read_data_sets('MNIST_data/')
@@ -253,16 +253,16 @@ summary = tf.merge_all_summaries()
 with tf.Session() as session:
     # 変数を初期化する計算グラフを実行します。session.run(計算グラフ)で、実行できます。
     session.run(tf.initialize_all_variables())
-    
+
     # tensorboardへの出力ライブラリ。
     summary_writer = tf.train.SummaryWriter('MNIST_train/', session.graph)
-   
+
     # バッチを1万回実行します。本当は、いい感じに学習できたら終了にすべきなのですけど……。
     for i in range(10000):
         # TensorFlowのサンプルのMNIST読み込みライブラリは、next_batch(件数)で、指定された件数のデータを読み込みます。
         # 今回は、100件単位で学習することにしました。
         batch = data_sets.train.next_batch(100)
-        
+
         # placeholderへのデータの設定は、ディクショナリを使用して実現されます。
         feed_dict = {inputs: batch[0], labels: batch[1]}
 
@@ -274,17 +274,17 @@ with tf.Session() as session:
             # TensorBoardにデータを出力しhます。
             summary_writer.add_summary(session.run(summary, feed_dict=feed_dict), i)
             summary_writer.flush()
-            
+
             # 損失関数の値を画面に出力します。
             print('Step %4d: loss = %.2f' % (i, loss_value))
 
             # 訓練用データとは別のテスト用データで評価して、結果を画面に出力します。
-            evaluation_value = session.run(evaluation, 
+            evaluation_value = session.run(evaluation,
                                            feed_dict={inputs: data_sets.test.images,
                                                       labels: data_sets.test.labels})
-            print('Score = %d/%d, precision = %.04f' % 
+            print('Score = %d/%d, precision = %.04f' %
                   (evaluation_value, data_sets.test.num_examples, evaluation_value / data_sets.test.num_examples))
-```
+~~~
 
 ## 試してみる
 

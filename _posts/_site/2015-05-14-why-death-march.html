@@ -1,0 +1,157 @@
+<p>いまどきの道具、たとえばRuby on Railsを使うと、ビックリするくらい簡単にWebアプリケーションを作れます。このような優れた道具を活用できるのだから、システム開発はいつも大成功で儲かってウハウハ……なんてことはなくて、プロジェクトは必ず炎上して働いても働いても我が暮らしは楽になりません。いったい、どうしてなのでしょうか？</p>
+
+<h2 id="rails">仮説 #1: 実はRailsは便利じゃない←やっぱり便利だった</h2>
+
+<p>実はRailsが便利じゃないなら、システム開発が楽にならないのは納得できます。</p>
+
+<p>ただ、自分で書いておきなからなんなのですけれど、この仮説は明らかに間違ってそう。Railsの便利機能を紹介して、仮説が間違っていることを証明しましょう。Railsには様々な便利機能があるのですけど、今回は、検証機能を取り上げます。</p>
+
+<p>Railsでは、入力値の検証を、モデルに対して記述します。たとえば社員モデルの社員番号と指名を必須入力としたいなら、以下のように記述します。とにかくやたらと簡単。</p>
+
+<p><code class="highlighter-rouge">ruby
+class Employee &lt; ActiveRecord::Base
+  validates :code, :presence: true  # この1行だけで、社員番号は必須入力になります。
+  validates :name, :presence: true  # 氏名に関しても同様。
+end
+</code></p>
+
+<p>検証機能を使っている場合、そのユニット・テストの作成も簡単です。以下のような感じ。</p>
+
+<p>```ruby
+test “validations” do
+  employee = employees(:employee_1)            # テスト用のデータを取得
+  employee.validate!                           # テスト用のデータが正しいことを確認。</p>
+
+<p>assert_raise ActiveRecord::RecordInvalid do  # 社員番号の必須入力が正しく機能しているか確認。
+    employee.code = nil
+    employee.validate!
+  end</p>
+
+<p>assert_raise ActiveRecord::RecordInvalid do  # 氏名も同様に確認。
+    employee.name = nil
+    employee.validate!
+  end
+end
+```</p>
+
+<p>少し補足します。必須チェックでエラーになるケースには、<code class="highlighter-rouge">nil</code>の他にも<code class="highlighter-rouge">""</code>（空文字列）や<code class="highlighter-rouge">" "</code>（空白のみの文字列）や<code class="highlighter-rouge">"\t"</code>（タブ文字のみの文字列）などが考えられます。もしRailsの検証機能を使わずに<code class="highlighter-rouge">if</code>文でチェックしていたなら、これらのすべてのケースをテストしなければなりません。Railsの検証機能を使っている上のコードでは、それらがたった1つの<code class="highlighter-rouge">nil</code>の場合のテストだけで済んでいるわけです。</p>
+
+<p>あ、そうそう、Railsの流儀に従っているなら、入力値検証のテストはこれで終了です。ブラウザを開いての手動テストは不要。Railsのビューは、一般に以下のようなコードになるのですけど……。</p>
+
+<p>```ruby
+&lt;%= form_for(@employee) do |f| %&gt;
+  &lt;% if @employee.errors.any? %&gt;
+    &lt;div id="error_explanation"&gt;
+      &lt;h2&gt;&lt;%= @employee.errors.count %&gt;件のエラーがあります。保存できませんでした。&lt;/h2&gt;</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>  &lt;ul&gt;
+    &lt;% @employee.errors.full_messages.each do |message| %&gt;
+      &lt;li&gt;&lt;%= message %&gt;&lt;/li&gt;
+    &lt;% end %&gt;
+  &lt;/ul&gt;
+&lt;/div&gt;   &lt;% end %&gt;
+</code></pre>
+</div>
+
+<div class="field">
+    &lt;%= f.label :code %&gt;<br />
+    &lt;%= f.text_field :code %&gt;
+  </div>
+<div class="field">
+    &lt;%= f.label :name %&gt;<br />
+    &lt;%= f.text_field :name %&gt;
+  </div>
+
+<div class="actions">
+    &lt;%= f.submit %&gt;
+  </div>
+<p>&lt;% end %&gt;
+```</p>
+
+<p>1行目で使っている<code class="highlighter-rouge">form_for</code>や途中の<code class="highlighter-rouge">label</code>、<code class="highlighter-rouge">text_field</code>は、Railsには検証機能があることを知っています。なので、エラーがある項目については、<code class="highlighter-rouge">&lt;label&gt;</code>や<code class="highlighter-rouge">&lt;input type="text"&gt;</code>をエラーがあることが分かるように表示してくれます（赤い枠で囲まれる）。<code class="highlighter-rouge">if @employee.errors.any?</code>のブロックで、エラーの内容も表示できています。早い話が、Railsの流儀に従って上のコードのようにビューのコードを書くだけで、以下のキャプチャのように、エラーがある場合は適切な表示がなされるというわけです。</p>
+
+<p>＃次の仮説の検証コードなので画面に好きな言語が入っていますけど、無視してください。あと、CSSを書いていないため見た目が悪いですが、ご容赦ください。</p>
+
+<p><img src="/images/2015-05-14/view-with-errors.png" alt="エラー時の画面" /></p>
+
+<p>うん、やっぱりRailsは便利ですね。わずか数行のコードを書いてRailsの流儀に従うだけで、手動のテストなしで入力値の検証を実現できるのですから。</p>
+
+<h2 id="rails-1">仮説 #2: Railsでは機能不足←機能は十分だった</h2>
+
+<p>「先程のは、要件が単純だから上手くいっただけだ。実際の開発ではもっと要件が難しくて……」みたいな意見があるかもしれません。検証してみましょう。</p>
+
+<p>社員には「好きな言語」と「好きな業界」という属性があって、社員番号の最初の1桁が「D」（Developerの略。SEなどという日本でしか通用しない用語は絶対に使いません）の場合は「好きな言語」が必須、「S」（Sales staff）の場合は「好きな業界」が必須となるような場合を考えてみます。</p>
+
+<p>この場合に対応するために<a href="http://railsdoc.com/validation">Railsのリファレンス</a>を見てみたら、値が空でないかの検証に<code class="highlighter-rouge">:if</code>というオプションがありました。これを使用してみます。</p>
+
+<p><code class="highlighter-rouge">ruby
+class Employee &lt; ActiveRecord::Base
+  validates :code, presence: true
+  validates :name, presence: true
+  validates :favorite_language, presence: {if: -&gt; (employee) { employee.code.try(:at, 0) == "D" }}  # 1文字目がDなら、必須。
+  validates :favorite_industry, presence: {if: -&gt; (employee) { employee.code.try(:at, 0) == "S" }}  # 1文字目がSなら、必須。
+end
+</code></p>
+
+<p>ちょっと面倒なコードになっているのは、<code class="highlighter-rouge">code</code>が<code class="highlighter-rouge">nil</code>の場合を考慮しなければならないためです。なので、指定した箇所の文字を取得するメソッドである<code class="highlighter-rouge">at</code>を、<code class="highlighter-rouge">try</code>で囲って呼び出しています。<code class="highlighter-rouge">-&gt; (parameter) { body }</code>は、Rubyのラムダ式です。</p>
+
+<p>「いや、もっと要件が複雑な場合があり得る。職掌は、他の情報も含めて総合的に判断する。社員番号の1桁目が「D」であっても、営業部に所属している場合は営業として扱う」なんて場合もあるかもしれません。</p>
+
+<p>ふむふむ、なるほど。社員番号は社員を一意に識別する番号なので、変更できない。でも、職掌は変更になり得る。だから、実は社員番号の1桁目での判断なんてのはすでに破綻していて、今は他の情報を使って無理やり判断している……ってそれ、単なる設計ミスじゃあないですか！</p>
+
+<p>そもそも、「カラムXの値がαだったらカラムYの値はβでなければならない」ってのは、リレーショナル・データベースの鉄則である正規化に抵触します（言語や業界を別テーブルに分割していないという正規化違反は、すみません、無視します）。第三正規化は、キー以外は全て主キーに非推移的に関数従属するという、まぁ、私のような文系人間には何を言っているのかわからない話ではあるのですが、主キーの値が決まれば値が決まる属性Xの値が決まると値が決まる属性Yがある場合、属性Xと属性Yを別のテーブルにしましょうというものみたい（品番が「20BS0040JP」の商品（ThinkPad X1 Carbon）の商品カテゴリ番号は「1234」で、商品カテゴリ番号が「1234」の商品カテゴリ名は「コンピューター」のようば場合、商品カテゴリを別テーブルに分離する）。</p>
+
+<p>第三正規化のポイントは全ての属性は主キーにのみ依存しなければならないというもので、もちろん正規化というのは値の話なのですけれど、意味的なところまで拡張して考えれば、favorite_languageやfavorite_industryの存在の有無が、他の属性に依存しているのはおかしいと考えられる訳です。</p>
+
+<p>というわけで、オブジェクト指向屋ならば継承、Railsでは単一テーブル継承を使ってこの問題を根本解決してしまいましょう。</p>
+
+<p>```ruby
+class Employee &lt; ActiveRecord::Base
+  validates :code, presence: true
+  validates :name, presence: true
+end</p>
+
+<p>class Developer &lt; Employee
+  validates :favorite_language, presence: true
+pend</p>
+
+<p>class SalesStaff &lt; Employee
+  validates :favorite_industry, presence: true
+end
+```</p>
+
+<p>ほら、面倒臭かった<code class="highlighter-rouge">:if</code>の部分がなくなりました。これならとても簡単です。</p>
+
+<p>少し補足。Railsの単一テーブル継承は、子孫クラス全てのカラム＋文字列型の<code class="highlighter-rouge">type</code>というカラムを持ったテーブルを作ると、Railsが自動的に<code class="highlighter-rouge">type</code>の値と同じ名前のクラスのインスタンスを作ってくれるというものです。上の例で言えば、<code class="highlighter-rouge">type</code>カラムの値が「Developer」ならば<code class="highlighter-rouge">Developer</code>クラスのインスタンス、「SalesStaff」ならば<code class="highlighter-rouge">SalesStaff</code>クラスのインスタンスが作成されるというわけ。そうそう、<code class="highlighter-rouge">type</code>はごく普通の属性なので、一般的なオブジェクト指向言語では難しいクラスの変更もできます。なので、職掌の変更も可能です。残った問題は、社員番号の最初の一桁を今後はどうするかお客様と打ち合わせるだけ。</p>
+
+<p>やっぱり、Railsには十分な機能がありますね。正しくモデルを設計すれば、一つ前の仮説検証の時と同じような単純なコードで入力値の検証ができるのですから。</p>
+
+<h2 id="rails-2">仮説 #3: Railsは難しい←簡単だった</h2>
+
+<p>どんなに便利な道具であっても、使いこなすのが難しいのであれば、上手く使いこなせなくて生産性が上がらないかもしれません。</p>
+
+<p>でもね、Railsって難しくないと思うんですよ。以下に、私がRailsを簡単だと考えている理由を挙げます。</p>
+
+<ul>
+  <li>論理的に作られているので、ある部分を理解していれば他の部分も同じ論理の応用で理解できる。理解しなければならないことも、覚えなければならないことも少ない。</li>
+  <li>文書が豊富。Web上に記事も多い。このエントリーを書くまで<code class="highlighter-rouge">validates :presence</code>の<code class="highlighter-rouge">:if</code>を知らなかったのですけれど、検索して3分で見つけられました。</li>
+  <li>チュートリアルの出来が良い。Twitterみたいなアプリケーションを作るチュートリアルがあって、これをやるだけでRailsの考え方を理解できます。</li>
+</ul>
+
+<p>そもそも、私は普段はRubyではなくClojureを使っていて、実はRubyもRailsも初心者です。そして私は物忘れが激しくなった45歳のおっさん。それなのに普通に使えちゃうんですから、これはRailsが簡単である証拠と言えるのではないでしょうか。</p>
+
+<h2 id="rails-3">仮説 #4: Railsの機能を活用する設計ができない←たぶんコレ！</h2>
+
+<p>これはもうアレだ。にわかには信じられないけれど、せっかくの便利機能を敢えて使ってないんじゃ……。</p>
+
+<p>私がこんな無茶な仮説を出すのは、これまでの経験で無茶なやり方の開発がされるのを見てきたからです。</p>
+
+<p>システム開発の現場では、画面の設計から入る方式をよく見ます。どのような入力項目があって、どのような入力値の検証をするかを書いた文書を作る方式です。このやり方の場合、画面Aと画面Bで入力値検証が異なる危険性があります。画面Aと画面Bでは同じだったとしても、このあと作られる画面Cの設計書でも同じ入力値検証になるかは、設計が終わるまで分かりません。だからそう、画面の設計を進めていく開発プロセスの場合、モデルに対して検証内容を設定していくRailsの検証機能は使えないわけです。<code class="highlighter-rouge">if</code>を使って入力値を検証するロジックを書いてWebブラウザを開いて手動でテストしまくるわけで、それじゃあ生産性が上がるはずなんかありません。</p>
+
+<p>オブジェクト指向のクラスのような大きな塊から順に詳細化していくのではなく、細かな項目である属性をいきなり決定していく設計の方式もよく見ます。「得意な言語に記入される内容は？どのような場合に入力が必須になりますか？入力がなかった場合のエラー・メッセージは？」みたいにヒアリングを進めていく感じ。このようなやり方で行く限り、単一テーブル継承を使って整理した場合のような単純なモデルは出来上がらないでしょう。<code class="highlighter-rouge">:if</code>を使った面倒なロジックと、そのロジックを使う場合に対応するための面倒なテストが必要になってしまいます。こんなのが積み重なるのですから、そりゃあ、残業が増えますよ。</p>
+
+<p>あと、そもそもRailsでは、データに対する操作画面のあり方を定義しています。Railsのルーティング情報は<code class="highlighter-rouge">config/routes.rb</code>に書くのですけれど、ここに<code class="highlighter-rouge">resources :employee</code>と書けば、それだけで社員を一覧、閲覧、登録、更新、削除するためのルーティングが定義されます。でも、「まず画面遷移を設計して……」という開発プロセスの場合は、このような便利機能は使えず、画面毎にURLやパラメーターを決めていくことになります。その場合はRailsの前提が壊れるので、使えない便利機能も出てきます。たとえば、普段は何も意識しないでも自動で実行されるのでこのエントリーでは触れていない、Webアプリケーションの脆弱性の一つであるCSRF（Cross Site Request Forgeries）への対策とかね。RailsとCSRFでGoogle検索するとCSRF対策を無効にする方法が見つかるわけですけれど、CSRF対策をオンにしたままだと動作できないようなRailsの流儀から外れた画面遷移を実装しなければならない場合は、まぁ、CSRF対策を無効にするしかありませんよね。で、アプリケーションを脆弱なまま放っておくわけにはいかないので、独自のCSRF対策を入れ、頑張ってテストする。Railsは生産性が高いというのを前提にしたコスト計算をしているなら、プロジェクトが炎上するのも当たり前でしょう。</p>
+
+<p>うん、これが正しそうです。Railsの流儀から外れた設計を、それもモデルではなく画面として設計するプロジェクトが多いから、私は貧乏らしい。</p>
+
+<p>でも、いったいどうして、Railsの流儀に従ったり、モデルとして抽象化してアプリケーション全体を設計したりすることができないのでしょうか？それについては、また今度考えさせてください。</p>

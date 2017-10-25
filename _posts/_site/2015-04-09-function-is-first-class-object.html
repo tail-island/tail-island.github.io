@@ -1,0 +1,82 @@
+<p>条件が多段になる場合のコードって、書くのが難しいと思うんですよ。</p>
+
+<p>成人式を例にして考えてみます。群馬県の成人式はバンジー・ジャンプで栃木県の成人式はライオンと格闘、それ以外の都道府県では普段通りの平穏無事な日々を送るとしましょう。とりあえず言語はJavaでいってみます。</p>
+
+<p>```java
+if (person.getAge() == 20) {
+  switch (person.getBirthplace()) {
+  case “群馬県”:
+    doBungeeJumping();
+    break;</p>
+
+<p>case “栃木県”:
+    fightWithLions();
+    break;</p>
+
+<p>default:
+    peacefulDays();  // 重複している！
+  }
+} else {
+  peacefulDays();    // 重複している！
+}
+```</p>
+
+<p><code class="highlighter-rouge">peacefulDays()</code>が重複していますので、このコードは悪いコードです。今の程度なら問題はなさそうですけれど、たとえば成人式以外のイベントも対応しようとすると日付チェックが追加されるので条件式が3段になるわけです。そうなると、たぶんどこかで<code class="highlighter-rouge">peacefulDays()</code>を書くのを忘れて、とても見つけづらいバグが発生してしまう。嫌だなぁ……。</p>
+
+<p>でも、Clojureなら、こんな場合も大丈夫です。だって、「<code class="highlighter-rouge">if</code>が式」で「関数がファースト・クラス・オブジェクト」なのですから。</p>
+
+<p>Clojureの<code class="highlighter-rouge">if</code>は、値を返す式です。Javaの三項演算子と同じ。そして、Clojureの関数はファースト・クラス・オブジェクトなので、値として扱える。だから、以下のようなコードを書けます。</p>
+
+<p><code class="highlighter-rouge">clojure
+((or (if (= (:age human) 20)
+       (cond
+         (= (:birthplace human) "群馬県") do-bungee-jumping
+         (= (:birthplace human) "栃木県") fight-with-lions))
+     peaceful-days)))
+</code></p>
+
+<p><code class="highlighter-rouge">if</code>の部分が何をしているのかというと、20歳で群馬県出身なら<code class="highlighter-rouge">do-bungee-jumping</code>という「関数」を、同様に20歳で栃木現出身なら<code class="highlighter-rouge">fight-with-lions</code>という「関数」を返しています。で、<code class="highlighter-rouge">if</code>や<code class="highlighter-rouge">cond</code>は条件が一致しない場合は<code class="highlighter-rouge">nil</code>を返すようになっていて、Clojureでは<code class="highlighter-rouge">nil</code>は偽だから、その場合の<code class="highlighter-rouge">or</code>の部分の結果はpeaceful-daysという「関数」になります。</p>
+
+<p>で、一番外側の <code class="highlighter-rouge">()</code>で関数が呼び出されるので、peaceful-daysが1つしかなくても、Javaの場合と同じ動作になるわけです。</p>
+
+<p>ほら、<code class="highlighter-rouge">if</code>が式で関数がファースト・クラス・オブジェクトな幸せを噛みしめたくなってきたでしょ？</p>
+
+<p>P.S.</p>
+
+<p>もしこのシステムを将来に渡って保守しなければならないなら、幸せを噛みしめる前に以下のようなコードにしたほうが良いかも。</p>
+
+<p>```clojure
+(defn born-in?
+  [place person]
+  (= (:birthplace person) place))</p>
+
+<p>(defn age-is?
+  [age person]
+  (= (:age person) age))</p>
+
+<p>(def gummar?
+  (partial born-in? “群馬県”))</p>
+
+<p>(def tochigian?
+  (partial born-in? “栃木県”))</p>
+
+<p>(def initiation?
+  (partial age-is? 20))</p>
+
+<p>(def preds-and-actions
+  [[(every-pred gummar? initiation?)    do-bungee-jumping]
+   [(every-pred tochigian? initiation?) fight-with-lions]
+   [(constantly true)                   peaceful-days]])</p>
+
+<p>(defn suitable-action-for
+  [person]
+  (some (fn [[pred action]]
+          (and (pred person) action))
+        preds-and-actions))</p>
+
+<p>((suitable-action-for person))
+```</p>
+
+<p>あと、Javaの場合も、Java 8で追加されたラムダ式を使うなら、綺麗に書けるかもしれません。</p>
+
+<p>＃文法が面倒くさくて、途中で挫折しちゃいました……。</p>

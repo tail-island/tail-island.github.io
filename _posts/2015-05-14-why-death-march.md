@@ -15,16 +15,16 @@ tags:     [Programming, Design, Ruby on Rails]
 
 Railsでは、入力値の検証を、モデルに対して記述します。たとえば社員モデルの社員番号と指名を必須入力としたいなら、以下のように記述します。とにかくやたらと簡単。
 
-```ruby
+~~~ ruby
 class Employee < ActiveRecord::Base
   validates :code, :presence: true  # この1行だけで、社員番号は必須入力になります。
   validates :name, :presence: true  # 氏名に関しても同様。
 end
-```
+~~~
 
 検証機能を使っている場合、そのユニット・テストの作成も簡単です。以下のような感じ。
 
-```ruby
+~~~ ruby
 test "validations" do
   employee = employees(:employee_1)            # テスト用のデータを取得
   employee.validate!                           # テスト用のデータが正しいことを確認。
@@ -39,13 +39,13 @@ test "validations" do
     employee.validate!
   end
 end
-```
+~~~
 
 少し補足します。必須チェックでエラーになるケースには、`nil`の他にも`""`（空文字列）や`" "`（空白のみの文字列）や`"\t"`（タブ文字のみの文字列）などが考えられます。もしRailsの検証機能を使わずに`if`文でチェックしていたなら、これらのすべてのケースをテストしなければなりません。Railsの検証機能を使っている上のコードでは、それらがたった1つの`nil`の場合のテストだけで済んでいるわけです。
 
 あ、そうそう、Railsの流儀に従っているなら、入力値検証のテストはこれで終了です。ブラウザを開いての手動テストは不要。Railsのビューは、一般に以下のようなコードになるのですけど……。
 
-```ruby
+~~~ ruby
 <%= form_for(@employee) do |f| %>
   <% if @employee.errors.any? %>
     <div id="error_explanation">
@@ -67,12 +67,12 @@ end
     <%= f.label :name %><br>
     <%= f.text_field :name %>
   </div>
-  
+
   <div class="actions">
     <%= f.submit %>
   </div>
 <% end %>
-```
+~~~
 
 1行目で使っている`form_for`や途中の`label`、`text_field`は、Railsには検証機能があることを知っています。なので、エラーがある項目については、`<label>`や`<input type="text">`をエラーがあることが分かるように表示してくれます（赤い枠で囲まれる）。`if @employee.errors.any?`のブロックで、エラーの内容も表示できています。早い話が、Railsの流儀に従って上のコードのようにビューのコードを書くだけで、以下のキャプチャのように、エラーがある場合は適切な表示がなされるというわけです。
 
@@ -90,14 +90,14 @@ end
 
 この場合に対応するために[Railsのリファレンス](http://railsdoc.com/validation)を見てみたら、値が空でないかの検証に`:if`というオプションがありました。これを使用してみます。
 
-```ruby
+~~~ ruby
 class Employee < ActiveRecord::Base
   validates :code, presence: true
   validates :name, presence: true
   validates :favorite_language, presence: {if: -> (employee) { employee.code.try(:at, 0) == "D" }}  # 1文字目がDなら、必須。
   validates :favorite_industry, presence: {if: -> (employee) { employee.code.try(:at, 0) == "S" }}  # 1文字目がSなら、必須。
 end
-```
+~~~
 
 ちょっと面倒なコードになっているのは、`code`が`nil`の場合を考慮しなければならないためです。なので、指定した箇所の文字を取得するメソッドである`at`を、`try`で囲って呼び出しています。`-> (parameter) { body }`は、Rubyのラムダ式です。
 
@@ -111,7 +111,7 @@ end
 
 というわけで、オブジェクト指向屋ならば継承、Railsでは単一テーブル継承を使ってこの問題を根本解決してしまいましょう。
 
-```ruby
+~~~ ruby
 class Employee < ActiveRecord::Base
   validates :code, presence: true
   validates :name, presence: true
@@ -124,7 +124,7 @@ pend
 class SalesStaff < Employee
   validates :favorite_industry, presence: true
 end
-```
+~~~
 
 ほら、面倒臭かった`:if`の部分がなくなりました。これならとても簡単です。
 
