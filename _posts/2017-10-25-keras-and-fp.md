@@ -23,7 +23,7 @@ tags:     ["Keras, 深層学習, 関数型プログラミング"]
 * [Wide Residual Network](https://arxiv.org/abs/1605.07146)<br>Wide ResNetの論文です。
 * [SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size](https://arxiv.org/abs/1602.07360)<br>SqueezeNetの論文です。
 * [2016年の深層学習を用いた画像認識モデル](https://qiita.com/aiskoaskosd/items/59c49f2e2a6d76d62798)<br>論文の解説と、Chainerを使用した様々な論文のニューラル・ネットワークの実装です。Chainer使いの人は、こちらのコードをコピー＆ペーストで。
-* [画像分類のDeep-CNNを同条件で比較してみる](https://qiita.com/takedarts/items/fc6f6e96f2d0b7b55630)<br>Chainerを使用して、同じ条件で様々な論文のニューラル・ネットワークの精度を比較しています。Chainer使いの人は、この人のコードが綺麗なので参考になると思います。
+* [画像分類のDeep-CNNを同条件で比較してみる](https://qiita.com/takedarts/items/fc6f6e96f2d0b7b55630)<br>Chainerを使用して、同じ条件で様々な論文のニューラル・ネットワークの精度を比較しています。Chainer使いの人は、コードが美しいので参考になると思います。
 
 # 計算グラフの定義は、関数を返す関数を定義する形で
 
@@ -273,7 +273,6 @@ def computational_graph(class_size):
                     fire_module_with_shortcut(64, 512),
                     batch_normalization(),
                     relu(),
-                    dropout(),
                     conv(class_size, 1),
                     global_average_pooling(),
                     softmax())
