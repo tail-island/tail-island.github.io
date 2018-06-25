@@ -532,7 +532,7 @@ $ python test_corrctness.py
  6.2/11 = 0.57 monte_carlo_tree_search
 ~~~
 
-やったぁ！　パーフェクトです。先手と後手を入れ替えながら、モンテカルロ木探索との対戦もやってみましょう。
+やったぁ！　アルファ・ベータ法と同じスコア、パーフェクトです！　先手と後手を入れ替えながら、モンテカルロ木探索との対戦もやってみましょう。
 
 ~~~ python
 print(test_algorithm((pv_mcts_next_action, monte_carlo_tree_search_next_action)))
