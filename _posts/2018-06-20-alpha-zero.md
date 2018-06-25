@@ -479,7 +479,7 @@ for i in `seq 1 10` ; do
 done
 ~~~
 
-とりあえず、10サイクル回してみます。NVIDIA GTX 1080 TiをThunderbolt 3で繋いだ私のラップトップPCで、2時間くらいかかりました。
+とりあえず、10サイクル回してみましょう。NVIDIA GTX 1080 TiをThunderbolt 3で繋いだ私のラップトップPCで、2時間くらいかかりました。
 
 ## で、成果は？
 
