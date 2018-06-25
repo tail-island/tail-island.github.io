@@ -224,7 +224,7 @@ xx-
 from math import inf
 
 
-def foo(state):
+def score(state):
     if state.lose:
         return -1
 
