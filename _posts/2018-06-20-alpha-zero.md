@@ -7,7 +7,7 @@ tags:     ["Python", "Keras", "深層学習"]
 
 [前回](http://tail-island.github.io/programming/2018/06/19/monte-carlo-tree-search.html)やったモンテカルロ木探索は、けっこう強くて面白かった。でも、人間の欲には限りがありません。もう少しだけ、強くできないかな？　それ、話題の深層学習ならできます。そう、AlphaGoの後継のAlphaZeroならね。
 
-＃作成したコードは[こちら](https://github.com/tail-island/tictactoe-ai)で。
+＃作成したコードは[こちら](https://github.com/tail-island/tictactoe-ai)。
 
 ## モンテカルロ木探索で、なんとなく不満なところ
 
