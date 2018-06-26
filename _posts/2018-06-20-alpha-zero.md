@@ -544,4 +544,4 @@ print(test_algorithm((monte_carlo_tree_search_next_action, pv_mcts_next_action))
 0.56   # モンテカルロ木探索が先手の場合の、先手の勝率
 ~~~
 
-うん、簡易実装なのに、モンテカルロ木探索より強い！　今年49歳になるおっさんでも作れちゃうくらいに簡単なのに、AlphaZeroってすげー。
+うん、手を抜いた簡易的な実装なのに、モンテカルロ木探索より強い！　今年49歳になるおっさんでも作れちゃうくらいに簡単なのに、AlphaZeroってすげー。
