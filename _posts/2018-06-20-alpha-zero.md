@@ -553,8 +553,8 @@ print(test_algorithm((monte_carlo_tree_search_next_action, pv_mcts_next_action))
 11.0/11 = 1.00 nega_alpha
 11.0/11 = 1.00 pv_mcts
  6.2/11 = 0.56 monte_carlo_tree_search
-0.94
-0.515
+0.94   # PV MCTSが先手の場合の、先手の勝率
+0.515  # モンテカルロ木探索が先手の場合の、先手の勝率
 ~~~
 
 やりました！　パーフェクトです！　対モンテカルロ木探索の勝率も上がりました！　今年49歳になるおっさんでも作れちゃうくらいに簡単なのに、AlphaZeroってすげー。
