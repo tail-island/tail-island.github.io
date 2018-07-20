@@ -211,11 +211,11 @@ def computational_graph():
     return rcompose(conv(WIDTH),
                     rcompose(*repeatedly(residual_block, HEIGHT)),
                     global_average_pooling(),
-                    ljuxt(rcompose(dense(9), softmax()),
+                    ljuxt(rcompose(dense(9)),
                           rcompose(dense(1), tanh())))
 ~~~
 
-ニューラル・ネットワークという名前を使うのはちょっと恥ずかしいので、関数名は`computational_graph()`、計算グラフにしました。こんな簡単なコードですけど、これでResidual Networkは完成です。出力が固定長云々に対応しているのは最後の2行で、`dense(9)`でポリシー用の長さ9のベクトルを、`dense(1)`で価値用の長さ1のベクトルを作成しています（AlphaZeroではこの部分も多段になっているみたいですけど、マルバツは簡単なので1層にしちゃいました）。`dense`の結果はでたらめな大きさの数値（[0.9832, -183.15, 1.2345, 67890.123...]みたいな感じ）なのですけど、でもポリシーは確率の形をしていて欲しいですから、`softmax`という処理でベクトルの要素の合計が1になるようにしています。価値は-1から1の値になっていて欲しいので、`tanh`を使用しました。あと、なんかやけにコードがスッキリしているなぁって感じるのは、関数型プログラミングのテクニックを使っているから。詳細は[ここ](http://tail-island.github.io/programming/2017/10/25/keras-and-fp.html)で。
+ニューラル・ネットワークという名前を使うのはちょっと恥ずかしいので、関数名は`computational_graph()`、計算グラフにしました。こんな簡単なコードですけど、これでResidual Networkは完成です。出力が固定長云々に対応しているのは最後の2行で、`dense(9)`でポリシー用の長さ9のベクトルを、`dense(1)`で価値用の長さ1のベクトルを作成しています（AlphaZeroではこの部分も多段になっているみたいですけど、マルバツは簡単なので1層にしちゃいました）。ポリシーについては、`dense()`の結果をそのまま出力にします。一般的にはこのあとに何らかの活性化関数を入れるのですけど、合法手以外のポリシーは使わないわけで、非合法な手を含んでいる今はできることがありませんから。価値は-1から1の値になっていて欲しいので、`tanh`を使用しました。あと、なんかやけにコードがスッキリしているなぁって感じるのは、関数型プログラミングのテクニックを使っているからです。詳細は[ここ](http://tail-island.github.io/programming/2017/10/25/keras-and-fp.html)で。
 
 で、この計算グラフから処理を呼び出す際に必要となるモデルを作成するコードは、以下の通り。
 
@@ -258,10 +258,13 @@ def predict(model, state):
     x = to_x(state).reshape(1, 3, 3, 2)
     y = model.predict(x, batch_size=1)
 
-    return y[0][0][list(state.legal_actions)], y[1][0][0]
+    policies = y[0][0][list(state.legal_actions)]
+    policies /= sum(policies) if sum(policies) else 1
+
+    return policies, y[1][0][0]
 ~~~
 
-`to_x()`は入力用の3✕3✕2の行列を作る関数です（Kerasでは、入力をx、出力をyと名付ける慣習があるみたい）。上のコードで使用しているNumPyは、癖があって時々辛いけど、とてもとても便利です。たとえばNumPyの`array`では`array[(1, 3, 4)]`と書くと`[array[1], array[3], array[4]]`が返ってくる機能があって、それを利用しているのが`predict()`の最後の`y[0][0][list(state.legal_actions)]`です。これだけで、ニューラル・ネットワークの制限に縛られた固定長のベクトルから、可変長な合法手それぞれのポリシーに変換されます。あと、ニューラル・ネットワークの出力はベクトル2つのはずなのに添字が一個多く見えるのは、ニューラル・ネットワークでは複数の処理をバッチとして処理するためです。今回は`batch_size=1`なので、2つ目の添字に無条件で`[0]`を指定しました。入力の`x`の方も、`reshape()`で先頭に1を追加しています。
+`to_x()`は入力用の3✕3✕2の行列を作る関数です（Kerasでは、入力をx、出力をyと名付ける慣習があるみたい）。上のコードで使用しているNumPyは、癖があって時々辛いけど、とてもとても便利です。たとえばNumPyの`array`では`array[(1, 3, 4)]`と書くと`[array[1], array[3], array[4]]`が返ってくる機能があって、それを利用しているのが`policies`に値を代入する部分の`y[0][0][list(state.legal_actions)]`です。これだけで、ニューラル・ネットワークの制限に縛られた固定長のベクトルから、可変長な合法手それぞれのポリシーに変換されます。で、今回は手の確率にしておきたい（そうしないと、`next_child_node()`の式た正しく動かない気がする）ので、合計値で割り算しています。あと、ニューラル・ネットワークの出力はベクトル2つのはずなのに添字が一個多く見えるのは、ニューラル・ネットワークでは複数の処理をバッチとして処理するため。今回は`batch_size=1`なので、2つ目の添字に無条件で`[0]`を指定しました。入力の`x`の方も、`reshape()`で先頭に1を追加しています。
 
 ## セルフ・プレイ
 
@@ -377,7 +380,7 @@ def main():
     model_path = last(sorted(Path('./model/candidate').glob('*.h5')))
     model = load_model(model_path)
 
-    model.compile(loss=['categorical_crossentropy', 'mean_squared_error'], optimizer='adam')
+    model.compile(loss=['mean_squared_error', 'mean_squared_error'], optimizer='adam')
     model.fit(xs, [y_policies, y_values], 100, 100,
               callbacks=[LearningRateScheduler(partial(getitem, tuple(take(100, concat(repeat(0.001, 50), repeat(0.0005, 25), repeat(0.00025))))))])
 
@@ -388,7 +391,7 @@ if __name__ == '__main__':
     main()
 ~~~
 
-はい、これだけ。AlphaZeroは`SGD`というオプティマイザーを使ったらしいのですけど、私はTensorFlowのチュートリアルが使っていた`Adam`を使用しました。だって、Adamだと学習が速いんだもん。数式が分からなかったので速い理由はカケラも分かってないけどな。あと、学習率を少しずつ下げるコールバックをテキトーに設定しました。最高の精度を実現して論文書いてやるぜって場合じゃなければ、テキトーでもそれなりの精度が出るんですよ。
+はい、これだけ。AlphaZeroは`SGD`というオプティマイザーを使ったらしいのですけど、私はTensorFlowのチュートリアルが使っていた`Adam`を使用しました。だって、Adamだと学習が速いんだもん。数式が分からなかったので速い理由はカケラも分かってないけどな。損失関数は、フィーリングで二条誤差にしています。あと、学習率を少しずつ下げるコールバックをテキトーに設定しました。最高の精度を実現して論文書いてやるぜって場合じゃなければ、テキトーでもそれなりの精度が出るんですよ。
 
 ## 評価
 
@@ -528,11 +531,11 @@ def main():
 ~~~ shell
 $ python test_corrctness.py
 11.0/11 = 1.00 nega_alpha
-11.0/11 = 1.00 pv_mcts
- 6.2/11 = 0.57 monte_carlo_tree_search
+10.0/11 = 0.91 pv_mcts
+ 5.9/11 = 0.54 monte_carlo_tree_search
 ~~~
 
-やったぁ！　アルファ・ベータ法と同じスコア、パーフェクトです！　先手と後手を入れ替えながら、モンテカルロ木探索との対戦もやってみましょう。
+惜しい……。1つだけ間違えちゃいました（深層学習のニューラル・ネットワークの初期値はランダムなので、初期値ガチャを頑張ればパーフェクトになりますけど）。まぁ、モンテカルロ木探索よりも遥かに優秀なので良し！　ついでですから、先手と後手を入れ替えながらモンテカルロ木探索との対戦もやってみましょう。
 
 ~~~ python
 print(test_algorithm((pv_mcts_next_action, monte_carlo_tree_search_next_action)))
@@ -540,8 +543,18 @@ print(test_algorithm((monte_carlo_tree_search_next_action, pv_mcts_next_action))
 ~~~
 
 ~~~ shell
-0.805  # PV MCTSが先手の場合の、先手の勝率
-0.56   # モンテカルロ木探索が先手の場合の、先手の勝率
+0.91   # PV MCTSが先手の場合の、先手の勝率
+0.575  # モンテカルロ木探索が先手の場合の、先手の勝率
 ~~~
 
-うん、手を抜いた簡易的な実装なのに、モンテカルロ木探索より強い！　今年49歳になるおっさんでも作れちゃうくらいに簡単なのに、AlphaZeroってすげー。
+うん、かなり手を抜いた簡易実装なのに、モンテカルロ木探索よりも強いです。念の為、更にサイクルを回してみましょう。一日かけて、あと90回、合計して100回のサイクルを回してみました。
+
+~~~ shell
+11.0/11 = 1.00 nega_alpha
+11.0/11 = 1.00 pv_mcts
+ 6.2/11 = 0.56 monte_carlo_tree_search
+0.94
+0.515
+~~~
+
+やりました！　パーフェクトです！　対モンテカルロ木探索の勝率も上がりました！　今年49歳になるおっさんでも作れちゃうくらいに簡単なのに、AlphaZeroってすげー。
